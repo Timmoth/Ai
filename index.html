@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en" class="">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ai Experiments</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      background-color: #000000;
+      font-family: monospace;
+    }
+  </style>
+</head>
+
+<body
+  class="p-6 flex flex-col items-center font-mono min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 text-gray-200">
+
+  <h1
+    class="text-xl mb-6 text-center font-bold tracking-wide text-emerald-400 drop-shadow-[0_0_6px_rgba(52,211,153,0.5)]">
+    Ai Experiments
+  </h1>
+
+  <!-- Controls -->
+  <div class="flex flex-col sm:flex-row gap-3 mb-6 w-full max-w-3xl justify-between">
+    <input id="filter" type="text" placeholder="Filter projects..."
+      class="bg-gray-800 border border-gray-700 text-gray-200 px-2 py-1 rounded w-full sm:w-1/2 placeholder-gray-500 focus:outline-none focus:border-emerald-400">
+    <label class="flex items-center gap-2 text-sm text-gray-400">
+      Sort by:
+      <select id="sort"
+        class="bg-gray-800 border border-gray-700 text-gray-200 px-2 py-1 rounded focus:outline-none focus:border-emerald-400">
+        <option value="modified_at">Last Modified</option>
+        <option value="name">Name</option>
+      </select>
+    </label>
+  </div>
+
+  <!-- Project List -->
+  <ul id="projects" class="w-full max-w-3xl flex flex-col divide-y divide-gray-800 overflow-y-auto p-12"></ul>
+
+  <script>
+    let allProjects = [];
+
+    async function loadProjects() {
+      const res = await fetch('projects.json');
+      allProjects = await res.json();
+      renderProjects(sortProjects(allProjects, 'modified_at'));
+    }
+
+    function renderProjects(projects) {
+      const container = document.getElementById('projects');
+      container.innerHTML = '';
+
+      projects.forEach(p => {
+        const li = document.createElement('li');
+        li.className = "py-4 hover:bg-gray-800/50 transition px-2";
+
+        li.innerHTML = `
+          <a href="${p.url}" class="block">
+            <div class="flex justify-between items-baseline mb-1">
+              <span class="font-semibold text-gray-100">${p.name}</span>
+              <span class="text-xs text-gray-500">[${formatDate(p.created_at)}]</span>
+            </div>
+            <div class="text-sm text-gray-400">${p.description || ''}</div>
+          </a>
+        `;
+
+        container.appendChild(li);
+      });
+    }
+
+    function formatDate(unix_seconds) {
+      const options = { month: 'short', year: 'numeric' };
+      const date = new Date(unix_seconds * 1000);
+      return date.toLocaleDateString(undefined, options);
+    }
+
+    function sortProjects(projects, method) {
+      const sorted = [...projects];
+      if (method === 'name') {
+        sorted.sort((a, b) => a.name.localeCompare(b.name));
+      } else if (method === 'modified_at') {
+        sorted.sort((a, b) => new Date(b.modified_at) - new Date(a.modified_at));
+      } else if (method === 'tags') {
+        sorted.sort((a, b) => (a.tags[0] || '').localeCompare(b.tags[0] || ''));
+      }
+      return sorted;
+    }
+
+    function filterProjects(query) {
+      query = query.toLowerCase();
+      return allProjects.filter(p =>
+        p.name.toLowerCase().includes(query) ||
+        (p.description && p.description.toLowerCase().includes(query)) ||
+        p.tags.some(tag => tag.toLowerCase().includes(query))
+      );
+    }
+
+    document.getElementById('sort').addEventListener('change', e => {
+      const sorted = sortProjects(filterProjects(document.getElementById('filter').value), e.target.value);
+      renderProjects(sorted);
+    });
+
+    document.getElementById('filter').addEventListener('input', e => {
+      const filtered = filterProjects(e.target.value);
+      const sorted = sortProjects(filtered, document.getElementById('sort').value);
+      renderProjects(sorted);
+    });
+
+    loadProjects();
+  </script>
+
+  <!-- Sticky footer -->
+  <footer class="fixed bottom-0 left-0 w-full text-center text-sm text-gray-500 bg-gray-950/80 backdrop-blur-sm py-3">
+    Source code for projects
+    <a href="https://github.com/timmoth" target="_blank" class="text-emerald-400 hover:underline">found on GitHub</a> ·
+    Built by
+    <a href="https://www.timmoth.com/" target="_blank" class="text-emerald-400 hover:underline">Tim Jones</a>
+  </footer>
+
+</body>
+
+</html>

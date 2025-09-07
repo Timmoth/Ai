@@ -1,0 +1,15 @@
+[
+    {
+        "name": "Digit Draw",
+        "description": "Predict handwritten digits in the browser using a tensorflow CNN trained on the MNIST handwritten digits dataset.",
+        "created_at": 1757251059,
+        "modified_at": 1757251059,
+        "url": "./demos/digit_draw",
+        "tags": [
+            "js",
+            "javascript",
+            "tensorflow",
+            "mnist"
+        ]
+    }
+]
