@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Doodle Draw</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body
+    class="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 text-gray-100 font-mono p-4">
+
+    <div class="flex flex-col items-center space-y-4">
+        <div id="prediction" class="text-xl md:text-2xl text-center">
+            Draw a digit (0-9)
+        </div>
+
+        <canvas id="canvas" width="280" height="280"
+            class="border-4 border-gray-600 rounded-lg shadow-lg bg-black touch-none cursor-crosshair"></canvas>
+    </div>
+
+    <script>
+        let model;
+        const canvas = document.getElementById("canvas");
+        const ctx = canvas.getContext("2d");
+        const predictionDiv = document.getElementById("prediction");
+        const clearBtn = document.getElementById("clear");
+
+        ctx.fillStyle = "white";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.strokeStyle = "black";
+        ctx.lineWidth = 1;
+        ctx.lineCap = "round";
+
+        let drawing = false;
+        let prevX = 0;
+        let prevY = 0;
+        let lastUp = 0;
+
+        canvas.addEventListener("mousedown", () => { startDraw(); });
+        canvas.addEventListener("mouseup", () => { drawing = false; lastUp = Date.now(); });
+        canvas.addEventListener("mouseleave", () => { drawing = false; lastUp = Date.now(); });
+        canvas.addEventListener("mousemove", draw);
+
+        canvas.addEventListener("touchstart", e => { e.preventDefault(); startDraw(); });
+        canvas.addEventListener("touchend", e => { e.preventDefault(); drawing = false; lastUp = Date.now(); });
+        canvas.addEventListener("touchmove", e => { e.preventDefault(); draw(e.touches[0]); });
+
+        function startDraw() {
+            if(Date.now() - lastUp > 1000){
+                clearCanvas();
+            }
+
+            drawing = true; prevX = 0; prevY = 0;
+        }
+
+        function draw(e) {
+            if (!drawing) return;
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX || e.pageX) - rect.left;
+            const y = (e.clientY || e.pageY) - rect.top;
+
+            if (prevX !== 0 && prevY !== 0) {
+                ctx.beginPath();
+                ctx.moveTo(prevX, prevY);
+                ctx.lineTo(x, y);
+                ctx.stroke();
+                predictDigit();
+            }
+
+            prevX = x;
+            prevY = y;
+        }
+
+        function clearCanvas() {
+            ctx.fillStyle = "white";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            prevX = 0;
+            prevY = 0;
+            predictionDiv.textContent = "Draw a digit (0-9)";
+        }
+
+        // Load model
+        async function loadModel() {
+            model = await tf.loadLayersModel("./model.json");
+            console.log("Model loaded.");
+        }
+        loadModel();
+
+        function getCanvasTensor() {
+            return tf.tidy(() => {
+                // Get the pixels from the canvas
+                const pixels = tf.browser.fromPixels(canvas, 1);
+
+                // Invert the colors: The drawing is black (0), background is white (255).
+                // We want the drawing to be 1 and the background 0.
+                const inverted = tf.sub(255, pixels);
+
+                // Resize to 128x128
+                const resized = tf.image.resizeBilinear(pixels, [128, 128]);
+
+                // Normalize and reshape to what the model expects
+                // [batch, height, width, channels]
+                const normalized = resized.div(255.0).reshape([1, 128, 128, 1]);
+
+                return normalized;
+            });
+        }
+
+        const CLASSES = ["fan", "moon", "microphone", "calculator", "van", "spider", "parrot", "piano", "scorpion", "broccoli", "sea turtle", "envelope", "mouth", "birthday cake", "beard", "rake", "motorbike", "teddy-bear", "cell phone", "airplane", "hedgehog", "snake", "mermaid", "nail", "shark", "key", "horse", "cloud", "ambulance", "saw", "cactus", "dumbbell", "triangle", "mountain", "bus", "donut", "light bulb", "baseball bat", "book", "clock"];
+
+           let predictTimeout;
+        async function predictDigit() {
+            if (!model) return;
+
+            if (predictTimeout) clearTimeout(predictTimeout);
+           predictTimeout = setTimeout(async () => {
+    console.log("predict");
+
+    const tensor = getCanvasTensor();
+    const prediction = model.predict(tensor);
+
+    // get probabilities
+    const probs = prediction.dataSync();
+    const predIndex = prediction.argMax(1).dataSync()[0];
+    const confidence = (probs[predIndex] * 100).toFixed(1);
+
+    // update UI
+    predictionDiv.textContent = `I guess ${CLASSES[predIndex]} [${confidence}%]`;
+
+    // --- print sorted top-N results ---
+    const results = Array.from(probs).map((p, i) => ({
+        className: CLASSES[i],
+        prob: p
+    }));
+    results.sort((a, b) => b.prob - a.prob);
+
+    console.log("Top predictions:");
+    results.slice(0, 5).forEach(r => {
+        console.log(`${r.className}: ${(r.prob * 100).toFixed(1)}%`);
+    });
+
+    tensor.dispose();
+    prediction.dispose();
+}, 50);
+        }
+    </script>
+
+</body>
+
+</html>

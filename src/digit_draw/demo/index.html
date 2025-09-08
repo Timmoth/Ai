@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Digit Draw & Predict</title>
+    <title>Digit Draw</title>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
@@ -95,6 +95,7 @@
             return normalized;
         }
 
+        
         let predictTimeout;
         async function predictDigit() {
             if (!model) return;
