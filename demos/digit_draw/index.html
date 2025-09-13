@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Digit Draw & Predict</title>
+    <title>Digit Draw</title>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
@@ -90,11 +90,12 @@
 
         function getCanvasTensor() {
             const img = tf.browser.fromPixels(canvas, 1);
-            const resized = tf.image.resizeBilinear(img, [128, 128]);
-            const normalized = resized.div(255.0).reshape([1, 128 * 128]);
+            const resized = tf.image.resizeBilinear(img, [28, 28]);
+            const normalized = resized.div(255.0).reshape([1, 28 * 28]);
             return normalized;
         }
 
+        
         let predictTimeout;
         async function predictDigit() {
             if (!model) return;

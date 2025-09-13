@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>AI Snake</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <style>
+        body {
+            font-family: monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: #1a1a1a;
+            color: #f0f0f0;
+            margin: 0;
+        }
+
+        canvas {
+            border: 2px solid #00ff00;
+            background: #000;
+        }
+
+        #info {
+            margin-top: 1rem;
+            font-size: 1.2rem;
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="canvas" width="640" height="480"></canvas>
+    <div id="info">Loading Model...</div>
+
+    <script>
+        const Direction = {
+            RIGHT: 1,
+            LEFT: 2,
+            UP: 3,
+            DOWN: 4,
+        };
+
+        const Action = {
+            STRAIGHT: 0,
+            RIGHT: 1,
+            LEFT: 2,
+        };
+
+        const BLOCK_SIZE = 20;
+
+        class Snake {
+            constructor(head, body = []) {
+                this.head = head;
+                this.body = body;
+                this.direction = Direction.RIGHT;
+            }
+
+            move(action, food) {
+                const clockWise = [Direction.RIGHT, Direction.DOWN, Direction.LEFT, Direction.UP];
+                const idx = clockWise.indexOf(this.direction);
+
+                if (action === Action.STRAIGHT) {
+                    this.direction = clockWise[idx];
+                } else if (action === Action.RIGHT) {
+                    const nextIdx = (idx + 1) % 4;
+                    this.direction = clockWise[nextIdx];
+                } else {
+                    const nextIdx = (idx + 3) % 4;
+                    this.direction = clockWise[nextIdx];
+                }
+
+                let { x, y } = this.head;
+                if (this.direction === Direction.RIGHT) x += BLOCK_SIZE;
+                else if (this.direction === Direction.LEFT) x -= BLOCK_SIZE;
+                else if (this.direction === Direction.DOWN) y += BLOCK_SIZE;
+                else if (this.direction === Direction.UP) y -= BLOCK_SIZE;
+
+                this.head = { x, y };
+                this.body.unshift({ ...this.head });
+
+                if (this.head.x === food.x && this.head.y === food.y) {
+                    return true;
+                } else {
+                    this.body.pop();
+                    return false;
+                }
+            }
+        }
+
+        class Food {
+            constructor(w, h, snakeBody) {
+                this.w = w;
+                this.h = h;
+                this.place(snakeBody);
+            }
+
+            place(snakeBody) {
+                while (true) {
+                    this.x = Math.floor(Math.random() * (this.w / BLOCK_SIZE)) * BLOCK_SIZE;
+                    this.y = Math.floor(Math.random() * (this.h / BLOCK_SIZE)) * BLOCK_SIZE;
+                    const snakePositions = new Set(snakeBody.map(p => `${p.x},${p.y}`));
+                    if (!snakePositions.has(`${this.x},${this.y}`)) {
+                        break;
+                    }
+                }
+            }
+        }
+
+        class Game {
+            constructor(canvas, infoDiv) {
+                this.canvas = canvas;
+                this.ctx = canvas.getContext('2d');
+                this.infoDiv = infoDiv;
+                this.w = canvas.width;
+                this.h = canvas.height;
+                this.reset();
+            }
+
+            reset() {
+                const head = { x: this.w / 2, y: this.h / 2 };
+                this.snake = new Snake(head, [
+                    head,
+                    { x: head.x - BLOCK_SIZE, y: head.y },
+                    { x: head.x - (2 * BLOCK_SIZE), y: head.y }
+                ]);
+                this.food = new Food(this.w, this.h, this.snake.body);
+                this.score = 0;
+                this.frame_iteration = 0;
+                this.running = true;
+            }
+
+            isCollision(pt = null) {
+                if (pt === null) pt = this.snake.head;
+                if (pt.x > this.w - BLOCK_SIZE || pt.x < 0 || pt.y > this.h - BLOCK_SIZE || pt.y < 0) {
+                    return true;
+                }
+                return this.snake.body.slice(1).some(p => p.x === pt.x && p.y === pt.y);
+            }
+            playStep(action) {
+                this.frame_iteration++;
+                const ateFood = this.snake.move(action, this.food);
+
+                if (ateFood) {
+                    this.score++;
+                    this.food.place(this.snake.body);
+                }
+
+                if (this.isCollision() || this.frame_iteration > 100 * this.snake.body.length) {
+                    this.running = false;
+                }
+            }
+            draw() {
+                const ctx = this.ctx;
+
+                // --- Background ---
+                ctx.fillStyle = '#000';
+                ctx.fillRect(0, 0, this.w, this.h);
+
+                ctx.strokeStyle = '#202020';
+                ctx.lineWidth = 1;
+                for (let x = 0; x < this.w; x += BLOCK_SIZE) {
+                    ctx.beginPath();
+                    ctx.moveTo(x, 0);
+                    ctx.lineTo(x, this.h);
+                    ctx.stroke();
+                }
+                for (let y = 0; y < this.h; y += BLOCK_SIZE) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, y);
+                    ctx.lineTo(this.w, y);
+                    ctx.stroke();
+                }
+
+                // --- Snake ---
+                ctx.strokeStyle = '#1e8000';
+                ctx.lineWidth = BLOCK_SIZE * 0.8;
+                ctx.lineJoin = 'miter';
+                ctx.lineCap = 'square';
+
+                ctx.beginPath();
+                ctx.moveTo(this.snake.body[0].x + BLOCK_SIZE / 2, this.snake.body[0].y + BLOCK_SIZE / 2);
+                this.snake.body.forEach(p =>
+                    ctx.lineTo(p.x + BLOCK_SIZE / 2, p.y + BLOCK_SIZE / 2));
+                ctx.stroke();
+
+                ctx.strokeStyle = '#3cff00';
+                ctx.lineWidth = BLOCK_SIZE * 0.6;
+                ctx.beginPath();
+                ctx.moveTo(this.snake.body[0].x + BLOCK_SIZE / 2, this.snake.body[0].y + BLOCK_SIZE / 2);
+                this.snake.body.forEach(p => ctx.lineTo(p.x + BLOCK_SIZE / 2, p.y + BLOCK_SIZE / 2));
+                ctx.stroke();
+
+
+                // --- Food ---
+                ctx.fillStyle = '#ff0000';
+                ctx.fillRect(this.food.x + 2, this.food.y + 2, BLOCK_SIZE - 4, BLOCK_SIZE - 4);
+                ctx.fillStyle = '#ff6666';
+                ctx.fillRect(this.food.x + 4, this.food.y + 4, BLOCK_SIZE - 8, BLOCK_SIZE - 8);
+            }
+
+
+            updateInfo() {
+                this.infoDiv.textContent = `Score: ${this.score}`;
+            }
+        }
+
+        function getState(game) {
+            const head = game.snake.head;
+            const w = game.w;
+            const h = game.h;
+            const bodyPositions = new Set(game.snake.body.slice(1).map(p => `${p.x},${p.y}`));
+
+            const s = 20; // Step size
+
+            const UP = { x: 0, y: -s }, UP_RIGHT = { x: s, y: -s }, RIGHT = { x: s, y: 0 }, DOWN_RIGHT = { x: s, y: s };
+            const DOWN = { x: 0, y: s }, DOWN_LEFT = { x: -s, y: s }, LEFT = { x: -s, y: 0 }, UP_LEFT = { x: -s, y: 0 };
+
+            let forward, left, right, back;
+
+            switch (game.snake.direction) {
+                case Direction.UP: [forward, left, right, back] = [UP, LEFT, RIGHT, DOWN]; break;
+                case Direction.DOWN: [forward, left, right, back] = [DOWN, RIGHT, LEFT, UP]; break;
+                case Direction.LEFT: [forward, left, right, back] = [LEFT, DOWN, UP, RIGHT]; break;
+                case Direction.RIGHT: [forward, left, right, back] = [RIGHT, UP, DOWN, LEFT]; break;
+            }
+
+            const directions = [forward, left, right];
+
+            // --- Immediate danger (binary 0/1) ---
+            const danger = directions.map(({ x: dx, y: dy }) => {
+                const nx = head.x + dx;
+                const ny = head.y + dy;
+                return (nx < 0 || nx >= w || ny < 0 || ny >= h || bodyPositions.has(`${nx},${ny}`)) ? 1.0 : 0.0;
+            });
+
+            // --- Immediate food (binary 0/1) ---
+            const foodBinary = directions.map(({ x: dx, y: dy }) => {
+                const nx = head.x + dx;
+                const ny = head.y + dy;
+                return (nx === game.food.x && ny === game.food.y) ? 1.0 : 0.0;
+            });
+
+            // --- Distance-based directional food features (0–1) ---
+            function normalizedDistance(dx, dy) {
+                const foodVec = { x: game.food.x - head.x, y: game.food.y - head.y };
+                // Dot product
+                const distAlongDir = foodVec.x * dx + foodVec.y * dy;
+                const maxPossible = Math.max(w, h);
+                // Clip the value between 0 and 1
+                return Math.min(Math.max(distAlongDir / maxPossible, 0.0), 1.0);
+            }
+            const foodDistance = [forward, left, right, back].map(({ x: dx, y: dy }) => normalizedDistance(dx, dy));
+
+            // --- Snake length feature ---
+            const snake_length = game.snake.body.length;
+            const max_length = (w * h) / (s * s);
+            const length_ratio = snake_length / max_length;
+            const length_feature = 1 - Math.exp(-3 * length_ratio);
+
+
+            /**
+             * Computes a danger score per direction based on path-based reachable space,
+             * using an intelligent tail-following heuristic and preventing 180-degree turns.
+             */
+            function directionalFloodFill() {
+                const scores = [];
+                const max_squares = (w * h) / (s * s);
+                const snake_body = game.snake.body.slice(1);
+
+                for (const { x: dx, y: dy } of directions) {
+                    const new_head = { x: head.x + dx, y: head.y + dy };
+
+                    const obstacles = new Set();
+                    if (snake_body.length > 0) {
+                        const body_len = snake_body.length;
+                        snake_body.forEach((part, i) => {
+                            const dist_to_part = (Math.abs(new_head.x - part.x) + Math.abs(new_head.y - part.y)) / s;
+                            const steps_to_vacate = body_len - i;
+                            if (dist_to_part < steps_to_vacate) {
+                                obstacles.add(`${part.x},${part.y}`);
+                            }
+                        });
+                    }
+
+                    // Immediate collision (wall or a "real" body obstacle)
+                    if (obstacles.has(`${new_head.x},${new_head.y}`) || new_head.x < 0 || new_head.x >= w || new_head.y < 0 || new_head.y >= h) {
+                        scores.push(1.0); // Max danger
+                        continue;
+                    }
+
+                    // --- Start of Path-Based Breadth-First Search (BFS) ---
+                    const visited = new Set([`${new_head.x},${new_head.y}`]);
+                    const queue = [{ p: new_head, prev_p: head }];
+                    let count = 0;
+
+                    while (queue.length > 0) {
+                        const { p, prev_p } = queue.shift();
+                        count++;
+
+                        const cardinal_dirs = [{ x: s, y: 0 }, { x: -s, y: 0 }, { x: 0, y: s }, { x: 0, y: -s }];
+                        for (const { x: d_x, y: d_y } of cardinal_dirs) {
+                            const neighbor = { x: p.x + d_x, y: p.y + d_y };
+
+                            // Prevent 180-degree turns
+                            if (neighbor.x === prev_p.x && neighbor.y === prev_p.y) {
+                                continue;
+                            }
+
+                            const neighborKey = `${neighbor.x},${neighbor.y}`;
+                            // Check if the neighbor is valid, not an obstacle, and not yet explored
+                            if (neighbor.x >= 0 && neighbor.x < w && neighbor.y >= 0 && neighbor.y < h &&
+                                !visited.has(neighborKey) &&
+                                !obstacles.has(neighborKey)) {
+                                visited.add(neighborKey);
+                                queue.push({ p: neighbor, prev_p: p }); // Enqueue
+                            }
+                        }
+                    }
+
+                    const score = 1.0 - (count / max_squares);
+                    scores.push(score);
+                }
+                return scores;
+            }
+
+            const ffScores = directionalFloodFill();
+            const state = [...danger, ...foodBinary, ...foodDistance, length_feature, ...ffScores];
+            return new Float32Array(state);
+        }
+
+        let model = null;
+        const canvasEl = document.getElementById('canvas');
+        const infoEl = document.getElementById('info');
+        const game = new Game(canvasEl, infoEl);
+
+        async function loadModel() {
+            try {
+                model = await tf.loadLayersModel('./model.json');
+                infoEl.textContent = 'Model loaded. Starting AI...';
+            } catch (err) {
+                console.error("Error loading model:", err);
+                infoEl.textContent = 'Error loading model. Check console.';
+            }
+        }
+
+        async function ai_loop() {
+            if (!model) {
+                requestAnimationFrame(ai_loop);
+                return;
+            }
+
+            if (game.running) {
+                const state = getState(game);
+                const actionIdx = tf.tidy(() => {
+                    const input = tf.tensor([state]);
+                    const prediction = model.predict(input);
+                    return prediction.argMax(1).dataSync()[0];
+                });
+
+                game.playStep(actionIdx);
+
+                game.draw();
+                game.updateInfo();
+            } else {
+                game.reset();
+            }
+
+            setTimeout(() => requestAnimationFrame(ai_loop), 50);
+        }
+
+        loadModel().then(() => {
+            requestAnimationFrame(ai_loop);
+        });
+
+    </script>
+</body>
+
+</html>

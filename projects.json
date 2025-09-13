@@ -11,5 +11,36 @@
             "tensorflow",
             "mnist"
         ]
+    },
+    {
+        "name": "Doodle Draw",
+        "description": "Draw a doodle in the browser and get predictions in real-time using a TensorFlow.js model trained on the Google Quick, Draw! dataset.",
+        "created_at": 1757252000,
+        "modified_at": 1757252000,
+        "url": "./demos/doodle_draw",
+        "tags": [
+            "js",
+            "javascript",
+            "tensorflow",
+            "tfjs",
+            "quickdraw",
+            "cnn"
+        ]
+    },
+    {
+        "name": "Snake AI (DQN)",
+        "description": "Deep Q-Network trained to play Snake in Python with TensorFlow/Keras. Model exported to TensorFlow.js for an in browser live demo.",
+        "created_at": 1757253000,
+        "modified_at": 1757253000,
+        "url": "./demos/snake_ai",
+        "tags": [
+            "python",
+            "tensorflow",
+            "tfjs",
+            "reinforcement-learning",
+            "dqn",
+            "ai",
+            "game"
+        ]
     }
 ]

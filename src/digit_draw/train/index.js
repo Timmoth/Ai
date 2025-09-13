@@ -79,13 +79,11 @@ async function run() {
     const testImgs = readIDX("./t10k-images.idx3-ubyte");
     const testLbls = readIDX("./t10k-labels.idx1-ubyte");
 
-    // --- convert to tensors
     let xTrainOrig = tf.tensor2d(trainImgs.images, [trainImgs.numImages, 28 * 28]);
     const yTrainOrig = oneHot(Array.from(trainLbls), 10);
     const xTest = tf.tensor2d(testImgs.images, [testImgs.numImages, 28 * 28]);
     const yTest = oneHot(Array.from(testLbls), 10);
 
-    // --- apply simple augmentation
     console.log("Applying data augmentation...");
     xTrainOrig = augmentImages(trainImgs.images, trainImgs.numImages);
 
@@ -111,7 +109,6 @@ async function run() {
 
     // Output
     model.add(tf.layers.dense({ units: 10, activation: 'softmax' }));
-
 
     model.summary();
 

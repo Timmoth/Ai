@@ -13,11 +13,13 @@
 
     <div class="flex flex-col items-center space-y-4">
         <div id="prediction" class="text-xl md:text-2xl text-center">
-            Draw a digit (0-9)
+            Draw a doodle
         </div>
 
-        <canvas id="canvas" width="280" height="280"
+        <canvas id="canvas" width="360" height="360"
             class="border-4 border-gray-600 rounded-lg shadow-lg bg-black touch-none cursor-crosshair"></canvas>
+
+        <button id="clear" class="px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded-md font-bold">Clear</button>
     </div>
 
     <script>
@@ -27,32 +29,36 @@
         const predictionDiv = document.getElementById("prediction");
         const clearBtn = document.getElementById("clear");
 
-        ctx.fillStyle = "white";
+        ctx.fillStyle = "black";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.strokeStyle = "black";
-        ctx.lineWidth = 1;
+        ctx.strokeStyle = "white";
+        ctx.lineWidth = 6;
         ctx.lineCap = "round";
 
         let drawing = false;
         let prevX = 0;
         let prevY = 0;
-        let lastUp = 0;
 
-        canvas.addEventListener("mousedown", () => { startDraw(); });
-        canvas.addEventListener("mouseup", () => { drawing = false; lastUp = Date.now(); });
-        canvas.addEventListener("mouseleave", () => { drawing = false; lastUp = Date.now(); });
+        let minX = 1000;
+        let minY = 1000;
+        let maxX = -1000;
+        let maxY = -1000;
+
+        canvas.addEventListener("mousedown", startDraw);
+        canvas.addEventListener("mouseup", () => drawing = false);
+        canvas.addEventListener("mouseleave", () => drawing = false);
         canvas.addEventListener("mousemove", draw);
 
         canvas.addEventListener("touchstart", e => { e.preventDefault(); startDraw(); });
-        canvas.addEventListener("touchend", e => { e.preventDefault(); drawing = false; lastUp = Date.now(); });
+        canvas.addEventListener("touchend", e => { e.preventDefault(); drawing = false; });
         canvas.addEventListener("touchmove", e => { e.preventDefault(); draw(e.touches[0]); });
 
-        function startDraw() {
-            if(Date.now() - lastUp > 1000){
-                clearCanvas();
-            }
+        clearBtn.addEventListener("click", clearCanvas);
 
-            drawing = true; prevX = 0; prevY = 0;
+        function startDraw() {
+            drawing = true;
+            prevX = 0;
+            prevY = 0;
         }
 
         function draw(e) {
@@ -66,84 +72,78 @@
                 ctx.moveTo(prevX, prevY);
                 ctx.lineTo(x, y);
                 ctx.stroke();
-                predictDigit();
+                predictSketch();
             }
 
             prevX = x;
             prevY = y;
+
+            minX = Math.min(x, minX);
+            minY = Math.min(y, minY);
+            maxX = Math.max(x, maxX);
+            maxY = Math.max(y, maxY);
         }
 
         function clearCanvas() {
-            ctx.fillStyle = "white";
+            ctx.fillStyle = "black";
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             prevX = 0;
             prevY = 0;
-            predictionDiv.textContent = "Draw a digit (0-9)";
+            predictionDiv.textContent = "Draw a doodle...";
+            minX = 1000;
+            minY = 1000;
+            maxX = -1000;
+            maxY = -1000;
         }
 
-        // Load model
         async function loadModel() {
-            model = await tf.loadLayersModel("./model.json");
-            console.log("Model loaded.");
+            try {
+                console.log("Loading Model...");
+                model = await tf.loadLayersModel("./model.json");
+                console.log("Model loaded successfully.");
+            } catch (err) {
+                console.error("Error loading model:", err);
+            }
         }
         loadModel();
 
         function getCanvasTensor() {
             return tf.tidy(() => {
-                // Get the pixels from the canvas
-                const pixels = tf.browser.fromPixels(canvas, 1);
+                const startX = Math.max(Math.floor(minX), 0);
+                const startY = Math.max(Math.floor(minY), 0);
+                const width = Math.min(Math.ceil(maxX) - startX, canvas.width - startX);
+                const height = Math.min(Math.ceil(maxY) - startY, canvas.height - startY);
 
-                // Invert the colors: The drawing is black (0), background is white (255).
-                // We want the drawing to be 1 and the background 0.
-                const inverted = tf.sub(255, pixels);
+                let pixels = tf.browser.fromPixels(canvas, 1);
+                let cropped = pixels.slice([startY, startX, 0], [height, width, 1]);
+                let normalized = cropped.div(255.0);
 
-                // Resize to 128x128
-                const resized = tf.image.resizeBilinear(pixels, [128, 128]);
-
-                // Normalize and reshape to what the model expects
-                // [batch, height, width, channels]
-                const normalized = resized.div(255.0).reshape([1, 128, 128, 1]);
-
-                return normalized;
+                let resized = tf.image.resizeBilinear(normalized, [64, 64]);
+                return resized.reshape([1, 64, 64, 1]);
             });
         }
 
-        const CLASSES = ["fan", "moon", "microphone", "calculator", "van", "spider", "parrot", "piano", "scorpion", "broccoli", "sea turtle", "envelope", "mouth", "birthday cake", "beard", "rake", "motorbike", "teddy-bear", "cell phone", "airplane", "hedgehog", "snake", "mermaid", "nail", "shark", "key", "horse", "cloud", "ambulance", "saw", "cactus", "dumbbell", "triangle", "mountain", "bus", "donut", "light bulb", "baseball bat", "book", "clock"];
+        const CLASSES = ["fan", "moon", "microphone", "calculator", "van", "spider", "parrot", "piano", "scorpion", "broccoli", "sea turtle", "envelope", "mouth", "birthday cake", "beard", "rake", "motorbike", "teddy-bear", "cell phone", "airplane", "hedgehog", "snake", "mermaid", "nail", "shark", "key", "horse", "cloud", "ambulance", "saw", "cactus", "dumbbell", "triangle", "mountain", "bus", "donut", "light bulb", "baseball bat", "book", "clock", "submarine", "radio", "camouflage", "picture frame", "stethoscope", "bulldozer", "lollipop", "string bean", "streetlight", "lantern", "teapot", "postcard", "fence", "animal migration", "campfire", "bucket", "pickup truck", "penguin", "hurricane", "ant", "circle", "butterfly", "popsicle", "ocean", "speedboat", "lion", "lobster", "diving board", "flower", "truck", "fire hydrant", "wine glass", "sink", "rainbow", "eyeglasses", "pineapple", "television", "roller coaster", "screwdriver", "sandwich", "bread", "paint can", "sun", "flashlight", "hot dog", "passport", "cookie", "eye", "apple", "candle", "raccoon", "zigzag", "ladder", "barn", "sleeping bag", "microwave", "dog", "river", "stop sign", "trumpet", "telephone", "wheel", "helicopter", "sword", "skyscraper", "anvil", "pillow", "power outlet", "hockey puck", "mailbox", "foot", "carrot", "bear", "shovel", "spoon", "cup", "fork", "church", "bee", "pig", "finger", "bird", "megaphone", "snowflake", "owl", "eraser", "alarm clock", "clarinet", "shoe", "lipstick", "ice cream", "hand", "knee", "skateboard", "pool", "tractor", "whale", "nose", "hamburger", "baseball", "pear", "waterslide", "laptop", "mouse", "tiger", "car", "bottlecap", "stove", "snorkel", "square", "strawberry", "rollerskates", "boomerang", "rain", "harp", "bat", "The Great Wall of China", "The Mona Lisa", "door", "see saw", "paintbrush", "flip flops", "kangaroo", "school bus", "asparagus", "computer", "The Eiffel Tower", "pencil", "hat", "drums", "bed", "cooler", "face", "t-shirt", "hexagon", "tennis racquet", "arm", "house", "washing machine", "binoculars", "smiley face", "tree", "squiggle", "mosquito", "pond", "trombone", "keyboard", "bush", "marker", "bandage", "umbrella", "lightning", "wine bottle", "bathtub", "hot air balloon", "floor lamp", "toe", "necklace", "saxophone", "blueberry", "oven", "tornado", "frog", "toaster", "guitar", "line", "dragon", "feather", "swan", "flying saucer", "police car", "headphones", "elephant", "steak", "sheep", "peanut", "snail", "castle", "spreadsheet", "garden hose", "zebra", "hot tub", "cruise ship", "shorts", "grass", "mushroom", "chandelier", "swing set", "golf club", "bracelet", "crown", "octagon", "traffic light", "calendar", "pliers", "bridge", "octopus", "cow", "toothpaste", "garden", "tooth", "beach", "fish", "cannon", "yoga", "panda", "pants", "snowman", "duck", "bicycle", "hourglass", "sock", "hospital", "skull", "compass", "flamingo", "rabbit", "wristwatch", "ear", "diamond", "sweater", "giraffe", "scissors", "crab", "brain", "crayon", "monkey", "chair", "frying pan", "belt", "broom", "elbow", "soccer ball", "jail", "mug", "helmet", "canoe", "toilet", "moustache", "basket", "rhinoceros", "dishwasher", "dolphin", "basketball", "camel", "cello", "grapes", "tent", "paper clip", "hammer", "toothbrush", "pizza", "coffee cup", "drill", "vase", "violin", "squirrel", "sailboat", "underwear", "bench", "leaf", "bowtie", "stitches", "hockey stick", "parachute", "crocodile", "suitcase", "jacket", "windmill", "cat", "lighthouse", "angel", "goatee", "cake", "stairs", "couch", "purse", "firetruck", "banana", "star", "palm tree", "fireplace", "matches", "dresser", "train", "camera", "stereo", "watermelon", "remote control", "peas", "blackberry", "onion", "table", "ceiling fan", "map", "potato", "leg", "house plant", "axe", "backpack"];
 
-           let predictTimeout;
-        async function predictDigit() {
+        let predictTimeout;
+        async function predictSketch() {
             if (!model) return;
-
             if (predictTimeout) clearTimeout(predictTimeout);
-           predictTimeout = setTimeout(async () => {
-    console.log("predict");
 
-    const tensor = getCanvasTensor();
-    const prediction = model.predict(tensor);
+            predictTimeout = setTimeout(async () => {
+                const tensor = getCanvasTensor();
+                const prediction = model.predict(tensor);
 
-    // get probabilities
-    const probs = prediction.dataSync();
-    const predIndex = prediction.argMax(1).dataSync()[0];
-    const confidence = (probs[predIndex] * 100).toFixed(1);
+                const probs = prediction.dataSync();
+                const predIndex = prediction.argMax(1).dataSync()[0];
+                const confidence = (probs[predIndex] * 100).toFixed(1);
 
-    // update UI
-    predictionDiv.textContent = `I guess ${CLASSES[predIndex]} [${confidence}%]`;
+                const emoji = confidence < 20 ? "🤷" : confidence < 40 ? "🤨" : confidence < 60 ?"🤔" : "🙋"
+                predictionDiv.textContent = `${emoji} ${CLASSES[predIndex]}? [${confidence}%]`;
 
-    // --- print sorted top-N results ---
-    const results = Array.from(probs).map((p, i) => ({
-        className: CLASSES[i],
-        prob: p
-    }));
-    results.sort((a, b) => b.prob - a.prob);
-
-    console.log("Top predictions:");
-    results.slice(0, 5).forEach(r => {
-        console.log(`${r.className}: ${(r.prob * 100).toFixed(1)}%`);
-    });
-
-    tensor.dispose();
-    prediction.dispose();
-}, 50);
+                tensor.dispose();
+                prediction.dispose();
+            }, 50);
         }
     </script>
 
