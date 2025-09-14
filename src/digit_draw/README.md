@@ -5,14 +5,17 @@
 **Description:**
 
 Digit Draw is a browser based interactive demo that allows you to draw digits (0-9) on a canvas, and it will predict what digit you're drawing using a TensorFlow convolutional neural network trained on the MNIST dataset.
+<p align="center">
+  <img src="../../images/digit_draw.jpeg" width="300">
+</p>
 
 **Technologies Used:**
 
--   **JavaScript:** 
--   **TensorFlow.js:** 
--   **HTML5 Canvas:**
--   **Node.js:**
--   **MNIST Dataset:**
+-   **JavaScript** 
+-   **TensorFlow** 
+-   **HTML5 Canvas**
+-   **Node**
+-   **MNIST Dataset**
 
 **How it Works:**
 
@@ -52,3 +55,6 @@ Digit Draw is a browser based interactive demo that allows you to draw digits (0
     ```bash
     node index.js
     ```
+
+
+[Check out Sebastian Lague's video on CNN's](https://www.youtube.com/watch?v=hfMk-kjRv4c)

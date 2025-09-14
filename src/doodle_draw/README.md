@@ -4,11 +4,15 @@
 
 Doodle Draw is a browser based interactive demo that allows you to draw doodles on a canvas, and it will predict what doodle you're drawing using a TensorFlow convolutional neural network trained on the ~50 million doodles from the google Quick Draw! dataset.
 
+<p align="center">
+  <img src="../../images/doodle_draw.jpeg" width="300">
+</p>
+
 ## Technologies Used  
 - **Python**
-- **JavaScript:** 
+- **JavaScript** 
 - **TensorFlow**
-- **HTML5 Canvas:**
+- **HTML5 Canvas**
 - **Quick Draw! dataset**
 
 ## How It Works  
@@ -46,3 +50,5 @@ Sequential([
 - ReduceLROnPlateau: lowers learning rate if stuck.
 - TFJSCheckpoint: exports the model to TensorFlow.js format after each epoch.
 - Final trained model is saved
+
+[Check out Sebastian Lague's video on CNN's](https://www.youtube.com/watch?v=hfMk-kjRv4c)

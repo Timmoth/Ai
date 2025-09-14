@@ -4,6 +4,17 @@
 
 This project implements a Snake game with an AI agent trained using Deep Q-Learning. The AI learns to play the game by interacting with the environment, receiving rewards for eating food, avoiding collisions, and maximizing survival.
 
+<p align="center">
+  <img src="../../images/snake_ai.jpeg" width="300">
+</p>
+
+## Technologies Used  
+- **Python**
+- **JavaScript** 
+- **TensorFlow**
+- **HTML5 Canvas**
+
+
 ## How It Works
 
 ### State Representation (Vision)
