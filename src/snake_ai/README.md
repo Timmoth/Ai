@@ -1,5 +1,7 @@
 # Snake AI with Deep Q-Learning
 
+## [Live demo](https://ai.timmoth.com/demos/snake_ai/)
+
 This project implements a Snake game with an AI agent trained using Deep Q-Learning. The AI learns to play the game by interacting with the environment, receiving rewards for eating food, avoiding collisions, and maximizing survival.
 
 ## How It Works
